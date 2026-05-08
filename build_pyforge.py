@@ -21,6 +21,26 @@ import shutil
 import argparse
 from pathlib import Path
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# CORREÇÃO: Força UTF-8 em todos os sistemas operacionais
+# ═══════════════════════════════════════════════════════════════════════════════
+if sys.platform == "win32":
+    # Força UTF-8 no stdout e stderr
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    else:
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+    # Define variável de ambiente
+    os.environ["PYTHONIOENCODING"] = "utf-8"
+
+# Garante UTF-8 em todos os sistemas
+os.environ["PYTHONIOENCODING"] = "utf-8"
+# ═══════════════════════════════════════════════════════════════════════════════
+
 # ─────────────────────────────────────────────
 SCRIPT      = "PythonForge_IDE.py"
 APP_NAME    = "PythonForge IDE"
@@ -49,9 +69,9 @@ def pip_install(pkg):
 def ensure_pyinstaller():
     try:
         import PyInstaller  # noqa
-        print("✓ PyInstaller já instalado")
+        print("OK PyInstaller ja instalado")
     except ImportError:
-        print("→ Instalando PyInstaller…")
+        print("-> Instalando PyInstaller...")
         pip_install("pyinstaller")
 
 def icon_flag(os_target):
@@ -88,9 +108,9 @@ def pyinstaller_base(os_target):
 # ─────────────────────────────────────────────
 
 def build_linux():
-    print("\n" + "═"*50)
+    print("\n" + "="*50)
     print("  BUILD: Linux (ELF binary)")
-    print("═"*50)
+    print("="*50)
     ensure_pyinstaller()
 
     cmd = [
@@ -102,19 +122,19 @@ def build_linux():
     out = Path(f"dist/linux/{APP_ID}")
     if out.exists():
         out.chmod(0o755)
-        print(f"\n✓ Binário Linux: {out.resolve()}")
+        print(f"\nOK Binario Linux: {out.resolve()}")
         _print_size(out)
     else:
-        print("[ERRO] Arquivo não gerado.")
+        print("[ERRO] Arquivo nao gerado.")
 
 # ─────────────────────────────────────────────
 #  WINDOWS  (nativo ou via Wine)
 # ─────────────────────────────────────────────
 
 def build_windows():
-    print("\n" + "═"*50)
+    print("\n" + "="*50)
     print("  BUILD: Windows (.exe)")
-    print("═"*50)
+    print("="*50)
 
     if OS == "Windows":
         _build_windows_native()
@@ -134,10 +154,10 @@ def _build_windows_native():
 
     out = Path(f"dist/windows/{APP_ID}.exe")
     if out.exists():
-        print(f"\n✓ Windows EXE: {out.resolve()}")
+        print(f"\nOK Windows EXE: {out.resolve()}")
         _print_size(out)
     else:
-        print("[ERRO] .exe não gerado.")
+        print("[ERRO] .exe nao gerado.")
 
 def _build_windows_wine():
     """
@@ -147,7 +167,7 @@ def _build_windows_wine():
     wine = shutil.which("wine") or shutil.which("wine64")
     if not wine:
         print("""
-[AVISO] Wine não encontrado. Para gerar .exe no Linux:
+[AVISO] Wine nao encontrado. Para gerar .exe no Linux:
 
   Ubuntu/Debian:
     sudo dpkg --add-architecture i386
@@ -160,15 +180,15 @@ def _build_windows_wine():
   Arch:
     sudo pacman -S wine
 
-Após instalar Wine, configure um Python Windows:
+Apos instalar Wine, configure um Python Windows:
   winetricks vcrun2019
-  wine python-3.12.0-amd64.msi        ← baixe de python.org
+  wine python-3.12.0-amd64.msi        <- baixe de python.org
   wine pip install pyinstaller
 
 Depois execute:
   wine pyinstaller --onefile --noconsole --name PythonForgeIDE PythonForge_IDE.py
 """)
-        print("→ Tentando build com pyinstaller nativo (gerará binário Linux)…")
+        print("-> Tentando build com pyinstaller nativo (gerara binario Linux)...")
         build_linux()
         return
 
@@ -182,7 +202,7 @@ Depois execute:
 
     if not wine_python.exists():
         print("""
-[AVISO] Python para Windows não encontrado no Wine.
+[AVISO] Python para Windows nao encontrado no Wine.
 
 Instale com:
   wine python-3.12.0-amd64.msi
@@ -199,7 +219,7 @@ Depois execute manualmente:
     # Install PyInstaller under Wine Python if needed
     wine_pi = wine_python.parent / "Scripts" / "pyinstaller.exe"
     if not wine_pi.exists():
-        print("→ Instalando PyInstaller no Wine Python…")
+        print("-> Instalando PyInstaller no Wine Python...")
         run([wine, str(wine_python), "-m", "pip", "install", "pyinstaller"])
 
     Path("dist/windows").mkdir(parents=True, exist_ok=True)
@@ -222,28 +242,28 @@ Depois execute manualmente:
 
     out = Path(f"dist/windows/{APP_ID}.exe")
     if out.exists():
-        print(f"\n✓ Windows EXE (via Wine): {out.resolve()}")
+        print(f"\nOK Windows EXE (via Wine): {out.resolve()}")
         _print_size(out)
     else:
-        print("[ERRO] .exe não gerado via Wine.")
+        print("[ERRO] .exe nao gerado via Wine.")
 
 # ─────────────────────────────────────────────
 #  MACOS
 # ─────────────────────────────────────────────
 
 def build_mac():
-    print("\n" + "═"*50)
+    print("\n" + "="*50)
     print("  BUILD: macOS (.app bundle)")
-    print("═"*50)
+    print("="*50)
 
     if OS != "Darwin":
         print("""
-[AVISO] Builds para macOS só podem ser feitos em um Mac.
+[AVISO] Builds para macOS so podem ser feitos em um Mac.
 
 Alternativas:
-  • GitHub Actions com 'runs-on: macos-latest'
-  • Serviço de build remoto (MacStadium, etc.)
-  • VM macOS no Apple Silicon
+  * GitHub Actions com 'runs-on: macos-latest'
+  * Servico de build remoto (MacStadium, etc.)
+  * VM macOS no Apple Silicon
 
 Cole este script no Mac e execute:
   python build_pyforge.py --mac
@@ -265,13 +285,13 @@ Cole este script no Mac e execute:
     binary     = Path(f"dist/mac/{APP_ID}")
 
     if app_bundle.exists():
-        print(f"\n✓ macOS App Bundle: {app_bundle.resolve()}")
+        print(f"\nOK macOS App Bundle: {app_bundle.resolve()}")
         _pack_dmg(app_bundle)
     elif binary.exists():
-        print(f"\n✓ macOS binary: {binary.resolve()}")
+        print(f"\nOK macOS binary: {binary.resolve()}")
         _print_size(binary)
     else:
-        print("[ERRO] .app não gerado.")
+        print("[ERRO] .app nao gerado.")
 
 def _pack_dmg(app_bundle):
     """Create a .dmg disk image (requires hdiutil, macOS only)."""
@@ -287,10 +307,10 @@ def _pack_dmg(app_bundle):
             "-ov", "-format", "UDZO",
             str(dmg),
         ], check=True)
-        print(f"✓ DMG criado: {dmg.resolve()}")
+        print(f"OK DMG criado: {dmg.resolve()}")
         _print_size(dmg)
     except Exception as e:
-        print(f"[AVISO] DMG não gerado: {e}")
+        print(f"[AVISO] DMG nao gerado: {e}")
 
 # ─────────────────────────────────────────────
 #  WINDOWS NSIS INSTALLER  (opcional)
@@ -299,13 +319,13 @@ def _pack_dmg(app_bundle):
 def build_nsis_installer():
     """Generate a Windows NSIS installer (.exe setup) — requires nsis."""
     if OS != "Windows":
-        print("[AVISO] NSIS installer só pode ser criado no Windows.")
+        print("[AVISO] NSIS installer so pode ser criado no Windows.")
         return
 
     makensis = shutil.which("makensis")
     if not makensis:
         print("""
-[AVISO] NSIS não encontrado.
+[AVISO] NSIS nao encontrado.
 Instale em: https://nsis.sourceforge.io/Download
 Ou via Chocolatey: choco install nsis
 """)
@@ -313,7 +333,7 @@ Ou via Chocolatey: choco install nsis
 
     exe_src = Path(f"dist/windows/{APP_ID}.exe")
     if not exe_src.exists():
-        print("→ Gerando .exe primeiro…")
+        print("-> Gerando .exe primeiro...")
         build_windows()
 
     nsi = Path("installer.nsi")
@@ -359,7 +379,7 @@ SectionEnd
     run([makensis, str(nsi)])
     out = Path(f"dist/{APP_ID}-{VERSION}-setup.exe")
     if out.exists():
-        print(f"\n✓ Installer NSIS: {out.resolve()}")
+        print(f"\nOK Installer NSIS: {out.resolve()}")
         _print_size(out)
 
 # ─────────────────────────────────────────────
@@ -377,15 +397,15 @@ def clean():
     for d in (BUILD_DIR, DIST_DIR):
         if d.exists():
             shutil.rmtree(d)
-            print(f"✓ Removido: {d}")
+            print(f"OK Removido: {d}")
     for f in Path(".").glob("*.spec"):
         f.unlink()
-        print(f"✓ Removido: {f}")
+        print(f"OK Removido: {f}")
 
 def print_summary():
-    print("\n" + "═"*50)
-    print("  RESUMO DOS EXECUTÁVEIS GERADOS")
-    print("═"*50)
+    print("\n" + "="*50)
+    print("  RESUMO DOS EXECUTAVEIS GERADOS")
+    print("="*50)
     for p in sorted(Path("dist").rglob("*")):
         if p.is_file():
             size = p.stat().st_size / 1_048_576
@@ -411,7 +431,7 @@ def main():
     args = parser.parse_args()
 
     if not Path(SCRIPT).exists():
-        print(f"[ERRO] '{SCRIPT}' não encontrado.")
+        print(f"[ERRO] '{SCRIPT}' nao encontrado.")
         print("       Execute este script na mesma pasta que PythonForge_IDE.py")
         sys.exit(1)
 
@@ -421,7 +441,7 @@ def main():
 
     # Default: build for current OS
     if not any([args.linux, args.windows, args.mac, args.all, args.installer]):
-        print(f"→ Nenhum alvo especificado. Construindo para {OS}…")
+        print(f"-> Nenhum alvo especificado. Construindo para {OS}...")
         if OS == "Linux":
             args.linux = True
         elif OS == "Windows":
@@ -445,12 +465,12 @@ def main():
         print_summary()
 
     print("""
-┌─────────────────────────────────────────────────────┐
-│          ✅  Build concluído!                        │
-│                                                     │
-│  Distribuição GitHub Actions (CI/CD multi-plat.):   │
-│  → Veja README_BUILD.md para workflow completo      │
-└─────────────────────────────────────────────────────┘
++---------------------------------------------------+
+|          OK  Build concluido!                        |
+|                                                     |
+|  Distribuicao GitHub Actions (CI/CD multi-plat.):   |
+|  -> Veja README_BUILD.md para workflow completo      |
++---------------------------------------------------+
 """)
 
 if __name__ == "__main__":

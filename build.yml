@@ -1,0 +1,165 @@
+# .github/workflows/build.yml
+# ─────────────────────────────────────────────────────────────────────────────
+#  PythonForge IDE — CI/CD Multi-Platform Build
+#  Gera executáveis para Linux, Windows e macOS automaticamente.
+#
+#  Ativa em:
+#    • push de tag (ex: git tag v1.0.0 && git push --tags)
+#    • push no branch main
+#    • manualmente pelo GitHub Actions UI
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Build PythonForge IDE
+
+on:
+  push:
+    tags:
+      - "v*"
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+
+  # ── Linux ──────────────────────────────────────────────────────────────────
+  build-linux:
+    name: 🐧 Linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências do sistema (tkinter)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-tk
+
+      - name: Instalar PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build Linux binary
+        run: python build_pyforge.py --linux
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PythonForgeIDE-linux
+          path: dist/linux/PythonForgeIDE
+          if-no-files-found: error
+
+  # ── Windows ────────────────────────────────────────────────────────────────
+  build-windows:
+    name: 🪟 Windows
+    runs-on: windows-latest
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar encoding UTF-8 no Windows
+        run: |
+          chcp 65001
+          echo "PYTHONIOENCODING=utf-8" >> $env:GITHUB_ENV
+          echo "PYTHONUTF8=1" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build Windows .exe
+        run: python build_pyforge.py --windows
+        env:
+          PYTHONIOENCODING: utf-8
+          PYTHONUTF8: "1"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PythonForgeIDE-windows
+          path: dist/windows/PythonForgeIDE.exe
+          if-no-files-found: error
+
+  # ── macOS ──────────────────────────────────────────────────────────────────
+  build-mac:
+    name: 🍎 macOS
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build macOS app
+        run: python build_pyforge.py --mac
+
+      - name: Compactar .app
+        run: |
+          cd dist/mac
+          zip -r PythonForgeIDE-mac.zip PythonForgeIDE.app || \
+          zip -r PythonForgeIDE-mac.zip PythonForgeIDE
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PythonForgeIDE-mac
+          path: dist/mac/PythonForgeIDE-mac.zip
+          if-no-files-found: error
+
+  # ── Release (só em tags) ───────────────────────────────────────────────────
+  release:
+    name: 🚀 Criar Release
+    needs: [build-linux, build-windows, build-mac]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Baixar todos os artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Listar arquivos
+        run: find artifacts -type f
+
+      - name: Criar GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "PythonForge IDE ${{ github.ref_name }}"
+          body: |
+            ## PythonForge IDE ${{ github.ref_name }}
+
+            IDE Python com tema escuro (Monokai), venv, auto-install de pacotes.
+
+            ### Downloads
+            | Plataforma | Arquivo |
+            |------------|---------|
+            | 🐧 Linux   | `PythonForgeIDE` (ELF binary) |
+            | 🪟 Windows | `PythonForgeIDE.exe` |
+            | 🍎 macOS   | `PythonForgeIDE-mac.zip` |
+
+            ### Requisitos
+            - Nenhum — executável autocontido (inclui Python)
+          files: |
+            artifacts/PythonForgeIDE-linux/PythonForgeIDE
+            artifacts/PythonForgeIDE-windows/PythonForgeIDE.exe
+            artifacts/PythonForgeIDE-mac/PythonForgeIDE-mac.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
